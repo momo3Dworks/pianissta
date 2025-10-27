@@ -73,9 +73,13 @@ export function LearnMenu({ isOpen, onOpenChange, onSelectItem, selectedItem }: 
       </SheetTrigger>
       <SheetContent 
         side="top" 
-        className="h-3/4 bg-purple-950/40 border-b border-orange-500/20 text-orange-100 backdrop-blur-md rounded-b-lg"
+        className="h-3/4 bg-purple-950/40 border-b border-orange-500/20 text-orange-100 backdrop-blur-md rounded-b-lg max-w-[1250px] mx-auto overflow-hidden"
       >
-        <div className="h-full flex flex-col max-w-4xl mx-auto">
+        <div className="relative h-full flex flex-col max-w-4xl mx-auto">
+            <div 
+                className="absolute inset-0 bg-no-repeat bg-center invert opacity-10 pointer-events-none"
+                style={{ backgroundImage: "url('/assets/Pianissta_Logo_tiny.webp')", backgroundSize: '97%' }}
+            />
           <SheetHeader className="text-center">
             <SheetTitle className="text-orange-100">Learning Mode</SheetTitle>
           </SheetHeader>

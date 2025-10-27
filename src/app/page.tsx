@@ -27,7 +27,7 @@ export default function Home() {
 
   const onPlayerReady = (event: any) => {
     playerRef.current = event.target;
-    playerRef.current.setVolume(5);
+    playerRef.current.setVolume(2);
     if (hasInteracted) {
         playerRef.current.playVideo();
         setIsYoutubePlaying(true);
@@ -89,11 +89,10 @@ export default function Home() {
        <Image
           src="/assets/Pianissta_Logo_tiny.webp"
           alt="Pianissta Logo"
-          width={150}
-          height={30}
+          width={83}
+          height={17}
           priority
-          className="absolute bottom-4 right-4 z-0 opacity-40 pointer-events-none"
-          style={{ width: 'auto', height: 'auto' }}
+          className="absolute bottom-4 right-4 z-0 opacity-40 pointer-events-none invert"
         />
     </main>
   );
