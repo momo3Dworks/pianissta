@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useRef, useCallback } from 'react';
@@ -90,8 +91,9 @@ export default function Home() {
           alt="Pianissta Logo"
           width={150}
           height={30}
+          priority
           className="absolute bottom-4 right-4 z-0 opacity-40 pointer-events-none"
-          style={{ height: 'auto' }}
+          style={{ width: 'auto', height: 'auto' }}
         />
     </main>
   );
