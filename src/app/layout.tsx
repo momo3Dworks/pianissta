@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Pianissta | Virtual Piano Studio',
-  description: 'Let's learn Music together!',
+  description: 'Let&#39s learn Music together!',
 };
 
 export default function RootLayout({
