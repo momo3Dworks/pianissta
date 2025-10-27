@@ -369,7 +369,9 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
       }
       
       const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 1000);
-      camera.position.set(0, 5.1, 3);
+      // Set initial camera position for the intro animation
+      camera.position.set(0, 2, 8);
+
 
       renderer = new WebGLRenderer({ antialias: false, alpha: true });
       renderer.setPixelRatio(window.devicePixelRatio);
@@ -441,6 +443,18 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
         camera.lookAt(center);
       }
 
+      // Animate camera to final position
+      gsap.to(camera.position, {
+        x: 0,
+        y: 5.1,
+        z: 3,
+        duration: 3,
+        ease: "power2.inOut",
+        onUpdate: () => {
+            controls?.update();
+        }
+      });
+
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
       
@@ -453,7 +467,7 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
       const dofEffect = new DepthOfFieldEffect(camera, {
         focusDistance: 0.0,
         focalLength: 0.048,
-        bokehScale: 2.0,
+        bokehScale: 3.0,
         height: 480
       });
       dofEffectRef.current = dofEffect;
@@ -573,3 +587,5 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
     </div>
   );
 }
+
+    
