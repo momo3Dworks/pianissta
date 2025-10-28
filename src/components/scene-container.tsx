@@ -14,6 +14,7 @@ import { gsap } from 'gsap';
 import { ChordDisplay, type ChordInfo } from './ChordDisplay';
 import { identifyChord, midiNoteToName, type LearnableItem } from '@/lib/music-theory';
 import { LearningDisplay } from './LearningDisplay';
+import { MidiLibrary } from './MidiLibrary';
 
 
 const vertexShader = `
@@ -580,6 +581,10 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
           volume={masterVolume}
           isYoutubePlaying={isYoutubePlaying}
           toggleYoutubeAudio={toggleYoutubeAudio}
+        />
+       <MidiLibrary
+          onNoteOn={handleNoteOn}
+          onNoteOff={handleNoteOff}
         />
        {learningMode && <LearningDisplay item={learningMode} />}
        <ChordDisplay chordInfo={currentChord} />

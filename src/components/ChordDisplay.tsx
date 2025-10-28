@@ -18,7 +18,7 @@ export function ChordDisplay({ chordInfo }: ChordDisplayProps) {
   }
 
   return (
-    <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
+    <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2">
       <div className="flex items-center justify-center gap-3 rounded-lg border border-orange-500/30 bg-gradient-to-br from-purple-900/50 to-purple-800/50 p-4 shadow-lg shadow-purple-900/20 backdrop-blur-md">
         {chordInfo.notes.map((note, index) => (
           <div key={index} className="flex items-center gap-3">
@@ -44,3 +44,5 @@ export function ChordDisplay({ chordInfo }: ChordDisplayProps) {
     </div>
   );
 }
+
+    
