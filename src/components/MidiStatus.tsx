@@ -1,7 +1,10 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { Button } from "./ui/button";
+import { AudioLines } from "lucide-react";
 
 const MIDI_COMMANDS: { [key: number]: string } = {
     0x80: 'Note Off',
@@ -29,9 +32,11 @@ export interface MidiState {
 
 interface MidiStatusProps {
     state: MidiState;
+    isYoutubePlaying: boolean;
+    toggleYoutubeAudio: () => void;
 }
 
-export function MidiStatus({ state }: MidiStatusProps) {
+export function MidiStatus({ state, isYoutubePlaying, toggleYoutubeAudio }: MidiStatusProps) {
     const [isActivity, setActivity] = useState(false);
 
     useEffect(() => {
@@ -45,48 +50,61 @@ export function MidiStatus({ state }: MidiStatusProps) {
     const getStatusInfo = () => {
         switch (state.status) {
             case 'pending':
-                return { text: 'Connecting...', color: 'bg-yellow-500' };
+                return { color: 'bg-yellow-500' };
             case 'connected':
-                return { text: 'MIDI Connected', color: 'bg-green-500' };
+                return { color: 'bg-green-500' };
             case 'disconnected':
-                return { text: 'No MIDI Device', color: 'bg-gray-500' };
+                return { color: 'bg-gray-500' };
             case 'unavailable':
-                return { text: 'MIDI Not Supported', color: 'bg-red-500' };
             case 'error':
-                return { text: 'MIDI Error', color: 'bg-red-500' };
+                return { color: 'bg-red-500' };
             default:
-                return { text: 'Unknown', color: 'bg-gray-500' };
+                return { color: 'bg-gray-500' };
         }
     };
 
-    const { text, color } = getStatusInfo();
-    const commandName = state.lastMessage ? MIDI_COMMANDS[state.lastMessage.command] || `Unknown (0x${state.lastMessage.command.toString(16)})` : 'N/A';
+    const { color } = getStatusInfo();
 
     return (
-        <div className="absolute top-4 left-4 z-10 w-64 rounded-lg border border-orange-500/30 bg-gradient-to-br from-purple-900/50 to-purple-800/50 bg-[length:200%_200%] p-3 text-orange-100 shadow-lg shadow-purple-900/20 backdrop-blur-[6px] animate-gradient-shift">
-            <div className="flex items-center justify-between">
+        <div 
+            className="h-12 flex items-center z-10"
+        >
+            <div 
+                className="bg-gradient-to-br from-purple-900/70 to-black/70 backdrop-blur-md p-3 h-full flex items-center gap-4"
+                style={{ clipPath: 'polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px)' }}
+            >
                 <div className="flex items-center gap-2">
-                    <span className={cn("h-3 w-3 rounded-full", color, "shadow-[0_0_6px_theme(colors.orange.500)]")}></span>
-                    <p className="text-sm font-medium">{text}</p>
+                    <span className={cn("h-2 w-2 rounded-full", color)}></span>
                 </div>
-                 <div className={cn(
+                
+                <div className={cn(
                     "h-2 w-2 rounded-full bg-orange-400 transition-all duration-100",
-                    isActivity ? 'opacity-100 shadow-[0_0_8px_2px_theme(colors.orange.400)]' : 'opacity-0'
+                    isActivity ? 'opacity-100 animate-pulse' : 'opacity-40'
                 )}></div>
-            </div>
-            {state.errorMessage && <p className="mt-1 text-xs text-red-400">{state.errorMessage}</p>}
-            <div className="mt-2 border-t border-orange-500/20 pt-2 text-xs">
-                <p className="font-semibold text-orange-200/80">Last Message:</p>
-                {state.lastMessage ? (
-                     <div className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 gap-y-1 font-mono">
-                        <span className="text-orange-200/60">CMD:</span><span className="truncate">{commandName}</span>
-                        <span className="text-orange-200/60">CH:</span><span>{state.lastMessage.channel + 1}</span>
-                        <span className="text-orange-200/60">D1:</span><span>{state.lastMessage.data1}</span>
-                        <span className="text-orange-200/60">D2:</span><span>{state.lastMessage.data2}</span>
+                                
+                <div className="border-l border-orange-500/20 pl-4 flex items-center gap-2 text-[11px] text-white">
+                    <div className="flex items-center gap-1 w-8">
+                        <span>{state.lastMessage ? MIDI_COMMANDS[state.lastMessage.command]?.substring(0,2).toUpperCase() : '--'}</span>
                     </div>
-                ) : (
-                    <p className="mt-1 font-mono text-orange-200/60">No data received</p>
-                )}
+                    <div className="flex items-center gap-1 w-8">
+                        <span>{state.lastMessage ? state.lastMessage.channel + 1 : '--'}</span>
+                    </div>
+                    <div className="flex items-center gap-1 w-8">
+                        <span>{state.lastMessage ? state.lastMessage.data1 : '--'}</span>
+                    </div>
+                    <div className="flex items-center gap-1 w-8">
+                        <span>{state.lastMessage ? state.lastMessage.data2 : '--'}</span>
+                    </div>
+                </div>
+                 <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={toggleYoutubeAudio}
+                    className="h-8 w-8 rounded-none bg-black/20 hover:bg-black/40 text-orange-300 hover:text-orange-100 ml-auto"
+                    style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%)' }}
+                >
+                    <AudioLines className={cn(isYoutubePlaying && "soundwave-icon", "transition-opacity h-5 w-5", !isYoutubePlaying && "opacity-50")} />
+                </Button>
             </div>
         </div>
     );

@@ -21,28 +21,42 @@ interface SettingsMenuProps {
     onQualityChange: (level: QualityLevel) => void;
 }
 
+const qualityDescriptions: Record<QualityLevel, string> = {
+    Low: "Ideal for performance",
+    Medium: "Balanced quality and performance",
+    High: "Best visual fidelity",
+};
+
+
 export function SettingsMenu({ qualityLevel, onQualityChange }: SettingsMenuProps) {
   return (
-    <div className="absolute top-4 right-4 z-20">
+    <div className="z-20">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="icon" className="h-12 w-12 rounded-lg border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100">
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-12 w-12 rounded-none backdrop-blur-md  border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100 backdrop-blur-md"
+            style={{ clipPath: 'polygon(20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%, 0 20%)' }}
+          >
             <Settings />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56 bg-purple-950/80 border-orange-500/30 text-orange-100 backdrop-blur-md">
+        <DropdownMenuContent 
+            className="w-64 bg-purple-950/80 border-orange-500/30 text-orange-100 backdrop-blur-md rounded-none"
+            style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%)' }}
+        >
           <DropdownMenuLabel>Quality Settings</DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-orange-500/20" />
           <DropdownMenuRadioGroup value={qualityLevel} onValueChange={(value) => onQualityChange(value as QualityLevel)}>
-            <DropdownMenuRadioItem value="Low" className="focus:bg-purple-800/70">
-                Low
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="Medium" className="focus:bg-purple-800/70">
-                Medium
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="High" className="focus:bg-purple-800/70">
-                High
-            </DropdownMenuRadioItem>
+            {(['Low', 'Medium', 'High'] as QualityLevel[]).map(level => (
+                <DropdownMenuRadioItem key={level} value={level} className="focus:bg-purple-800/70 p-3">
+                    <div className="flex flex-col">
+                        <span>{level}</span>
+                        <span className="text-xs text-orange-200/60">{qualityDescriptions[level]}</span>
+                    </div>
+                </DropdownMenuRadioItem>
+            ))}
           </DropdownMenuRadioGroup>
         </DropdownMenuContent>
       </DropdownMenu>

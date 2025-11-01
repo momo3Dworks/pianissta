@@ -41,7 +41,10 @@ export function LearningDisplay({ item, progressionState, onProgressionRestart }
 
   return (
     <div className="absolute top-28 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4 w-full max-w-md">
-      <div className="flex flex-col items-center gap-3 rounded-lg border border-orange-500/30 bg-gradient-to-br from-purple-900/50 to-purple-800/50 p-4 shadow-lg shadow-purple-900/20 backdrop-blur-md">
+      <div 
+        className="flex flex-col items-center gap-3 rounded-lg border border-orange-500/30 bg-gradient-to-br from-purple-900/50 to-purple-800/50 p-4 shadow-lg shadow-purple-900/20 backdrop-blur-md"
+        style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%)' }}
+      >
         <div className="text-center">
             <p className="text-sm font-medium text-orange-300">Currently Learning:</p>
             <p className="text-xl font-bold text-orange-100 tracking-wide drop-shadow-lg">{item.name}</p>

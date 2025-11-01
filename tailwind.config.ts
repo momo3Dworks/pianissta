@@ -91,12 +91,17 @@ export default {
         'gradient-shift': {
           '0%, 100%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
-        }
+        },
+        'slide-in-down': {
+          'from': { transform: 'translateY(-20px)', opacity: '0' },
+          'to': { transform: 'translateY(0)', opacity: '1' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'gradient-shift': 'gradient-shift 6s ease infinite',
+        'slide-in-down': 'slide-in-down 0.5s ease-out forwards',
       },
     },
   },

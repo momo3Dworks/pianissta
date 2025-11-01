@@ -3,7 +3,7 @@ import progressionsData from '@/data/progressions.json';
 
 export type ChordQuality = 'Major' | 'Minor' | 'Major 7th' | 'Minor 7th' | 'Unknown';
 
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const NOTE_NAMES_FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 
 
@@ -46,26 +46,27 @@ const CHORD_FORMULAS: Record<string, number[]> = {
     'Maj13': [0, 4, 7, 11, 14, 17, 21],
     'Min13': [0, 3, 7, 10, 14, 17, 21],
     '5': [0, 7], // Power Chord
-    '': [0, 4, 7], // Default to Major for chords like "C", "G"
-    'm': [0, 3, 7], // for Am
-    '7': [0, 4, 7, 10], // for C7, G7, etc.
-    'maj7': [0, 4, 7, 11], // for Cmaj7
-    'm7': [0, 3, 7, 10], // for Dm7
+    // Aliases for parsing progression data
+    '': [0, 4, 7],
+    'm': [0, 3, 7],
+    '7': [0, 4, 7, 10],
+    'maj7': [0, 4, 7, 11],
+    'm7': [0, 3, 7, 10],
     'm9': [0, 3, 7, 10, 14],
     '9': [0, 4, 7, 10, 14],
     '13': [0, 4, 7, 10, 21],
-    'C7': [0, 4, 7, 10],
-    'F7': [0, 4, 7, 10],
-    'G7': [0, 4, 7, 10],
-    'Dm7': [0, 3, 7, 10],
-    'Cmaj7': [0, 4, 7, 11],
-    'A7': [0, 4, 7, 10],
-    'E7': [0, 4, 7, 10],
-    'Abmaj7': [0, 4, 7, 11],
-    'Dm9': [0, 3, 7, 10, 14],
-    'G13': [0, 4, 7, 10, 21],
-    'C9': [0, 4, 7, 10, 14],
 };
+
+const CHORD_FORMULA_ALIASES: Record<string, string[]> = {
+    'C7': CHORD_FORMULAS['Dom7'], 'F7': CHORD_FORMULAS['Dom7'], 'G7': CHORD_FORMULAS['Dom7'],
+    'A7': CHORD_FORMULAS['Dom7'], 'E7': CHORD_FORMULAS['Dom7'],
+    'Dm7': CHORD_FORMULAS['Min7'],
+    'Cmaj7': CHORD_FORMULAS['Maj7'], 'Abmaj7': CHORD_FORMULAS['Maj7'],
+    'Dm9': CHORD_FORMULAS['Min9'],
+    'G13': CHORD_FORMULAS['Dom13'],
+    'C9': CHORD_FORMULAS['Dom9'],
+};
+
 
 const MODE_FORMULAS: Record<string, number[]> = {
     'Ionian': [0, 2, 4, 5, 7, 9, 11],
@@ -84,12 +85,25 @@ export type LearnableItem = {
     notes: number[];
 };
 
+export const getChordTypeNameFromItem = (item: LearnableItem): string => {
+    const parts = item.name.split(' ');
+    if (parts.length > 1) {
+        return parts.slice(1).join(' ');
+    }
+    return 'Maj'; // Should not happen with new naming
+}
+export const getModeTypeNameFromItem = (item: LearnableItem): string => {
+    return item.name.split(' ').slice(1).join(' ');
+}
+
+
 export const LEARNABLE_ITEMS: LearnableItem[] = [];
 
 // Create a map for easy lookup of note names to midi value
 const noteNameToMidi: { [key: string]: number } = {};
 for (let i = 0; i < 12; i++) {
     noteNameToMidi[NOTE_NAMES[i].toUpperCase()] = i;
+    noteNameToMidi[NOTE_NAMES_FLAT[i].toUpperCase()] = i;
 }
 
 
@@ -98,20 +112,22 @@ const getRootNoteFromChordName = (chordName: string): number => {
     if (!notePart) return 48; // Default to C3
     let noteStr = notePart[0].toUpperCase();
     
-    let baseNote = noteNameToMidi[noteStr.charAt(0)];
-    const modifier = noteStr.includes('#') ? 1 : (noteStr.includes('b') ? -1 : 0);
+    let baseNote = noteNameToMidi[noteStr];
     
-    return 48 + ((baseNote + modifier + 12) % 12);
+    return 48 + (baseNote % 12);
 }
 
 const getChordFormulaFromChordName = (chordName: string): number[] => {
-    let typePart = chordName.replace(/^[A-Ga-g][#b]?/, '');
-    // Handle specific cases for better matching
-    if (CHORD_FORMULAS[chordName]) return CHORD_FORMULAS[chordName];
+    if (CHORD_FORMULA_ALIASES[chordName]) return CHORD_FORMULA_ALIASES[chordName];
+    
+    let typePart = chordName.replace(/^[A-Ga-g][#b]?/, '').trim();
     if (CHORD_FORMULAS[typePart]) return CHORD_FORMULAS[typePart];
-    if (typePart === 'maj7') return CHORD_FORMULAS['Maj7'];
-    if (typePart === 'm7') return CHORD_FORMULAS['Min7'];
-    if (typePart === 'm') return CHORD_FORMULAS['Min'];
+    
+    // More robust matching for common names
+    if (typePart.toLowerCase() === 'maj7') return CHORD_FORMULAS['Maj7'];
+    if (typePart.toLowerCase() === 'm7') return CHORD_FORMULAS['Min7'];
+    if (typePart.toLowerCase() === 'm') return CHORD_FORMULAS['Min'];
+    
     return CHORD_FORMULAS['Maj'];
 }
 
@@ -129,7 +145,7 @@ for (let root = 48; root <= 84; root++) {
 
     // Simplified chord generation for clarity
     Object.entries(CHORD_FORMULAS)
-      .filter(([name]) => ['Maj', 'Min', 'Maj7', 'Min7', 'Dom7'].includes(name)) // only common ones for the learn menu
+      .filter(([name]) => !['', 'm', '7', 'maj7', 'm7', 'm9', '9', '13'].includes(name))
       .forEach(([name, formula]) => {
           const notes = formula.map(interval => root + interval);
           if (notes.every(n => n <= 96)) { // Ensure all notes are within C7

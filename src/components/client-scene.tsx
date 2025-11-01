@@ -2,12 +2,14 @@
 "use client";
 
 import { useAudio } from '@/contexts/audio-provider';
-import { useSceneLoader, type LoadedAssets } from '@/hooks/use-scene-loader';
-import { UnifiedLoader } from './unified-loader';
+import { type LoadedAssets } from '@/hooks/use-scene-loader';
 import dynamic from 'next/dynamic';
 import { type LearnableItem, type LearnableChordProgression } from '@/lib/music-theory';
 import { useCallback } from 'react';
 import { QualityLevel } from './SettingsMenu';
+import { ChordInfo } from './ChordDisplay';
+import { MidiState } from './MidiStatus';
+import * as THREE from 'three';
 
 const SceneContainer = dynamic(() => import('./scene-container').then(mod => mod.SceneContainer), {
   ssr: false,
@@ -16,59 +18,56 @@ const SceneContainer = dynamic(() => import('./scene-container').then(mod => mod
 type SelectableItem = LearnableItem | LearnableChordProgression;
 
 interface ClientSceneProps {
+    assets: LoadedAssets;
     learningMode: SelectableItem | null;
     progressionState: {
         currentChordIndex: number;
         completed: boolean;
     };
-    onProgressionAdvance: (playedNotes: number[]) => boolean;
     onProgressionRestart: () => void;
-    isYoutubePlaying: boolean;
-    toggleYoutubeAudio: () => void;
     qualityLevel: QualityLevel;
+    onSceneInit: (args: {
+        keyMaterials: Record<string, THREE.MeshStandardMaterial>;
+        mixer: THREE.AnimationMixer | null;
+    }) => void;
+    onKeyClick: (note: number) => void;
+    getNotesToHighlight: () => number[];
+    updateKeyVisuals: (note: number, isPressed: boolean, velocity?: number) => void;
+    currentChord: ChordInfo | null;
 }
 
 export function ClientScene({ 
+    assets,
     learningMode, 
     progressionState, 
-    onProgressionAdvance,
     onProgressionRestart,
-    isYoutubePlaying, 
-    toggleYoutubeAudio,
-    qualityLevel
+    qualityLevel,
+    onSceneInit,
+    onKeyClick,
+    getNotesToHighlight,
+    updateKeyVisuals,
+    currentChord,
 }: ClientSceneProps) {
-  const { isLoaded: isAudioLoaded, progress: audioProgress } = useAudio();
-  const { assets, isLoaded: areAssetsLoaded, progress: assetsProgress } = useSceneLoader({ skip: !isAudioLoaded });
 
-  const isFullyLoaded = isAudioLoaded && areAssetsLoaded;
-
-  const memoizedToggleYoutubeAudio = useCallback(toggleYoutubeAudio, [toggleYoutubeAudio]);
-  const memoizedProgressionAdvance = useCallback(onProgressionAdvance, [onProgressionAdvance]);
   const memoizedProgressionRestart = useCallback(onProgressionRestart, [onProgressionRestart]);
-
-  if (isFullyLoaded) {
-    return <SceneContainer 
+  const memoizedOnSceneInit = useCallback(onSceneInit, [onSceneInit]);
+  const memoizedOnKeyClick = useCallback(onKeyClick, [onKeyClick]);
+  const memoizedGetNotesToHighlight = useCallback(getNotesToHighlight, [getNotesToHighlight]);
+  
+  return <SceneContainer 
         assets={assets as LoadedAssets} 
         learningMode={learningMode}
         progressionState={progressionState}
-        onProgressionAdvance={memoizedProgressionAdvance}
         onProgressionRestart={memoizedProgressionRestart}
-        isYoutubePlaying={isYoutubePlaying}
-        toggleYoutubeAudio={memoizedToggleYoutubeAudio}
         qualityLevel={qualityLevel}
+        onSceneInit={memoizedOnSceneInit}
+        onKeyClick={memoizedOnKeyClick}
+        getNotesToHighlight={memoizedGetNotesToHighlight}
+        updateKeyVisuals={updateKeyVisuals}
+        currentChord={currentChord}
         />;
-  }
-
-  let loadingStep = '';
-  let progress = 0;
-
-  if (!isAudioLoaded) {
-    loadingStep = 'Loading Audio Assets...';
-    progress = audioProgress;
-  } else if (!areAssetsLoaded) {
-    loadingStep = 'Loading 3D Assets...';
-    progress = assetsProgress;
-  }
-  
-  return <UnifiedLoader loadingStep={loadingStep} progress={progress} />;
 }
+
+    
+
+    

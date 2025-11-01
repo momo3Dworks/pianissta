@@ -104,11 +104,20 @@ export function MidiLibrary({ onNoteOn, onNoteOff }: MidiLibraryProps) {
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-12 w-12 rounded-md bg-black/20 hover:bg-black/40 text-orange-300 hover:text-orange-100">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-12 w-12 rounded-none bg-black/20 hover:bg-black/40 text-orange-300 hover:text-orange-100 backdrop-blur-md"
+                      style={{ clipPath: 'polygon(20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%, 0 20%)' }}
+                    >
                         <Music className="h-6 w-6" />
                     </Button>
                 </SheetTrigger>
-                <SheetContent side="bottom" className="bg-purple-950/40 border-t border-orange-500/20 text-orange-100 backdrop-blur-md">
+                <SheetContent 
+                    side="bottom" 
+                    className="bg-purple-950/40 border-t border-orange-500/20 text-orange-100 backdrop-blur-md rounded-none"
+                    style={{ clipPath: 'polygon(5% 0, 95% 0, 100% 10%, 100% 90%, 95% 100%, 5% 100%, 0 90%, 0 10%)' }}
+                >
                     <SheetHeader>
                         <SheetTitle className="text-orange-100">MIDI Library</SheetTitle>
                     </SheetHeader>
@@ -137,7 +146,8 @@ export function MidiLibrary({ onNoteOn, onNoteOff }: MidiLibraryProps) {
                 size="icon"
                 onClick={handleTogglePlayback}
                 disabled={playbackState === 'loading' || !selectedMidi}
-                className="h-12 w-12 rounded-md bg-black/20 hover:bg-black/40 text-orange-300 hover:text-orange-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-12 w-12 rounded-none bg-black/20 hover:bg-black/40 text-orange-300 hover:text-orange-100 disabled:opacity-50 disabled:cursor-not-allowed backdrop-blur-md"
+                style={{ clipPath: 'polygon(20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%, 0 20%)' }}
             >
                 {playbackState === 'playing' ? <Square className="h-6 w-6" /> : <Play className="h-6 w-6" />}
             </Button>

@@ -1,3 +1,4 @@
+
 "use client";
 
 interface UnifiedLoaderProps {
@@ -7,7 +8,7 @@ interface UnifiedLoaderProps {
 
 export function UnifiedLoader({ loadingStep, progress }: UnifiedLoaderProps) {
   return (
-    <div className="absolute inset-0 flex items-center justify-center bg-background">
+    <div className="flex flex-col items-center justify-center bg-transparent">
       <div className="flex flex-col items-center gap-8">
         <div id="piano">
           <div id="white-keys">

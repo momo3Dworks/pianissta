@@ -6,18 +6,21 @@ import {
   AlertDialogAction,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "./ui/button";
 import Image from "next/image";
+import { UnifiedLoader } from "./unified-loader";
 
 interface InteractionModalProps {
   onInteract: () => void;
+  isLoading: boolean;
+  loadingStep: string;
+  progress: number;
 }
 
-export function InteractionModal({ onInteract }: InteractionModalProps) {
+export function InteractionModal({ onInteract, isLoading, loadingStep, progress }: InteractionModalProps) {
   // A simple way to unlock the audio context is to play a silent sound on the first user interaction.
   const unlockAudio = () => {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -30,6 +33,7 @@ export function InteractionModal({ onInteract }: InteractionModalProps) {
   };
 
   const handleInteraction = () => {
+    if (isLoading) return;
     try {
         unlockAudio();
     } catch (e) {
@@ -40,23 +44,35 @@ export function InteractionModal({ onInteract }: InteractionModalProps) {
 
   return (
     <AlertDialog open={true}>
-      <AlertDialogContent className="w-full max-w-lg rounded-lg border border-orange-500/30 bg-gradient-to-br from-purple-900/80 to-purple-800/80 p-6 text-orange-100 shadow-lg shadow-purple-900/20 backdrop-blur-md">
+      <AlertDialogContent 
+        className="w-full max-w-lg rounded-none bg-gradient-to-br from-black to-blue-950 p-6 text-orange-100 drop-shadow-lg"
+        style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%)' }}
+      >
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-orange-100">Learn Piano with me!</AlertDialogTitle>
-          <AlertDialogDescription className="text-orange-200/80">
-            Click the button below to start the experience. This is required to enable audio playback.
+          <AlertDialogTitle className="text-orange-100 text-center">Learn Piano with me!</AlertDialogTitle>
+          <AlertDialogDescription className="text-center text-orange-200/80">
+            Click the button to start the interactive piano learning experience.
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogAction asChild>
-            <Button 
-              onClick={handleInteraction} 
-              className="w-full flex justify-center bg-gradient-to-r from-orange-300 to-yellow-200 text-orange-950 font-bold hover:from-orange-400 hover:to-yellow-300 border border-orange-300/50 shadow-lg h-[6rem]"
-            >
-              <Image src="/assets/Pianissta_Logo_tiny.webp" alt="Pianissta Logo" width={200} height={40} priority />
-            </Button>
-          </AlertDialogAction>
-        </AlertDialogFooter>
+        
+        <div className="flex justify-center items-center h-48">
+            {isLoading ? (
+                <UnifiedLoader loadingStep={loadingStep} progress={progress} />
+            ) : (
+                <Image src="/assets/Pianissta_Logo_tiny.webp" alt="Pianissta Logo" width={300} height={60} priority className="invert" />
+            )}
+        </div>
+
+
+        <div className="mt-4 flex justify-center">
+          <Button 
+            onClick={handleInteraction}
+            disabled={isLoading} 
+            className="w-[70%] flex justify-center bg-gradient-to-r from-orange-300 to-yellow-200 text-orange-950 font-bold hover:from-orange-400 hover:to-yellow-300 border-none shadow-lg h-[4rem] disabled:opacity-70 disabled:cursor-not-allowed"
+          >
+              Start Learning
+          </Button>
+        </div>
       </AlertDialogContent>
     </AlertDialog>
   );
