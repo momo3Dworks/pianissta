@@ -1,20 +1,29 @@
 
 "use client";
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import YouTube from 'react-youtube';
 import { ClientScene } from '@/components/client-scene';
 import { InteractionModal } from '@/components/interaction-modal';
 import { AudioProvider } from '@/contexts/audio-provider';
-import { LearnMenu } from '@/components/LearnMenu';
-import { type LearnableItem } from '@/lib/music-theory';
+import { LearningToolbar } from '@/components/LearningToolbar';
+import { type LearnableItem, type LearnableChordProgression, getChordNotes } from '@/lib/music-theory';
 import Image from 'next/image';
+import { SettingsMenu, type QualityLevel } from '@/components/SettingsMenu';
+
+type SelectableItem = LearnableItem | LearnableChordProgression;
+
+interface ProgressionState {
+    currentChordIndex: number;
+    completed: boolean;
+}
 
 export default function Home() {
   const [hasInteracted, setHasInteracted] = useState(false);
-  const [learningMode, setLearningMode] = useState<LearnableItem | null>(null);
-  const [isLearnMenuOpen, setIsLearnMenuOpen] = useState(false);
+  const [learningMode, setLearningMode] = useState<SelectableItem | null>(null);
+  const [progressionState, setProgressionState] = useState<ProgressionState>({ currentChordIndex: 0, completed: false });
   const [isYoutubePlaying, setIsYoutubePlaying] = useState(true);
+  const [qualityLevel, setQualityLevel] = useState<QualityLevel>('Medium');
   const playerRef = useRef<any>(null);
 
   const handleInteraction = () => {
@@ -25,9 +34,52 @@ export default function Home() {
     }
   };
 
+  const handleSelectItem = (item: SelectableItem | null) => {
+    setLearningMode(item);
+    setProgressionState({ currentChordIndex: 0, completed: false });
+  }
+
+  const handleProgressionAdvance = useCallback((playedNotes: number[]) => {
+    if (!learningMode || !('genre' in learningMode) || progressionState.completed) {
+        return false;
+    }
+
+    const progression = learningMode as LearnableChordProgression;
+    
+    const currentChordName = progression.chords_C[progressionState.currentChordIndex];
+    if (!currentChordName) return false;
+
+    const currentChordNotes = getChordNotes(currentChordName).map(n => n % 12).sort();
+    
+    const playedNoteClasses = [...new Set(playedNotes.map(n => n % 12))].sort();
+
+    const isCorrect = currentChordNotes.length > 0 && currentChordNotes.length === playedNoteClasses.length && currentChordNotes.every((note, index) => note === playedNoteClasses[index]);
+
+    if (isCorrect) {
+        if (progressionState.currentChordIndex < progression.chords_C.length - 1) {
+            setProgressionState(prev => ({ ...prev, currentChordIndex: prev.currentChordIndex + 1 }));
+        } else {
+            setProgressionState(prev => ({ ...prev, completed: true }));
+        }
+        return true; // Chord was correct
+    }
+    return false; // Chord was incorrect or incomplete
+  }, [learningMode, progressionState]);
+
+
+  const restartProgression = useCallback(() => {
+    setProgressionState({ currentChordIndex: 0, completed: false });
+  }, []);
+
+  useEffect(() => {
+    if (learningMode && 'genre' in learningMode) {
+      setProgressionState({ currentChordIndex: 0, completed: false });
+    }
+  }, [learningMode]);
+
   const onPlayerReady = (event: any) => {
     playerRef.current = event.target;
-    playerRef.current.setVolume(2);
+    playerRef.current.setVolume(4);
     if (hasInteracted) {
         playerRef.current.playVideo();
         setIsYoutubePlaying(true);
@@ -45,8 +97,8 @@ export default function Home() {
     setIsYoutubePlaying(prev => !prev);
   }, [isYoutubePlaying]);
 
-  const onToggleLearnMenu = useCallback(() => {
-    setIsLearnMenuOpen(prev => !prev);
+  const handleQualityChange = useCallback((level: QualityLevel) => {
+    setQualityLevel(level);
   }, []);
 
   return (
@@ -55,18 +107,22 @@ export default function Home() {
         <InteractionModal onInteract={handleInteraction} />
       ) : (
         <AudioProvider>
-            <LearnMenu
-                isOpen={isLearnMenuOpen}
-                onOpenChange={setIsLearnMenuOpen}
-                onSelectItem={setLearningMode}
+            <LearningToolbar
+                onSelectItem={handleSelectItem}
                 selectedItem={learningMode}
             />
+            <SettingsMenu
+                qualityLevel={qualityLevel}
+                onQualityChange={handleQualityChange}
+            />
           <ClientScene 
-            learningMode={learningMode} 
-            onToggleLearnMenu={onToggleLearnMenu}
-            isLearnMenuOpen={isLearnMenuOpen}
+            learningMode={learningMode}
+            progressionState={progressionState}
+            onProgressionAdvance={handleProgressionAdvance}
+            onProgressionRestart={restartProgression}
             isYoutubePlaying={isYoutubePlaying}
             toggleYoutubeAudio={toggleYoutubeAudio}
+            qualityLevel={qualityLevel}
             />
         </AudioProvider>
       )}

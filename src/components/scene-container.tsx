@@ -9,55 +9,18 @@ import { useAudio } from '@/contexts/audio-provider';
 import { MidiStatus, type MidiState } from '@/components/MidiStatus';
 import { MidiControls } from '@/components/MidiControls';
 import { LoadedAssets } from '@/hooks/use-scene-loader';
-import { EffectComposer, RenderPass, EffectPass, BloomEffect, DepthOfFieldEffect, SMAAEffect, SMAAPreset } from 'postprocessing';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { SSRPass } from 'three/examples/jsm/postprocessing/SSRPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { gsap } from 'gsap';
 import { ChordDisplay, type ChordInfo } from './ChordDisplay';
-import { identifyChord, midiNoteToName, type LearnableItem } from '@/lib/music-theory';
+import { identifyChord, midiNoteToName, type LearnableItem, type LearnableChordProgression, getChordNotes } from '@/lib/music-theory';
 import { LearningDisplay } from './LearningDisplay';
 import { MidiLibrary } from './MidiLibrary';
+import { QualityLevel } from './SettingsMenu';
 
-
-const vertexShader = `
-  varying vec3 vNormal;
-  varying vec3 vPosition;
-  varying vec2 vUv;
-  void main() {
-    vNormal = normal;
-    vPosition = position;
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-
-const hologramFragmentShader = `
-  varying vec3 vNormal;
-  varying vec2 vUv;
-  uniform float uTime;
-  uniform vec3 uColor;
-
-  float random(vec2 st) {
-    return fract(sin(dot(st.xy, vec2(12.9898, 78.233))) * 43758.5453123);
-  }
-
-  void main() {
-    // Consistent scanline effect using UVs, now more pronounced
-    float scanline = sin(vUv.y * 300.0 + uTime * -5.0) * 0.1 + 0.9;
-
-    // Flicker effect
-    float flicker = random(vec2(uTime * 0.5, 0.0)) * 0.4 + 0.6;
-    
-    // Base glow (rim light effect)
-    float glow = dot(normalize(vNormal), vec3(0.0, 0.0, 1.0));
-    glow = pow(glow * 1.2, 2.0);
-
-    vec3 finalColor = uColor * glow * scanline * flicker;
-    
-    // Increased opacity - base opacity is higher now
-    float alpha = glow * scanline * flicker * 0.7 + 0.3;
-
-    gl_FragColor = vec4(finalColor, alpha);
-  }
-`;
+type SelectableItem = LearnableItem | LearnableChordProgression;
 
 const midiNoteToKeyName: { [key: number]: string } = {
   // White keys
@@ -80,23 +43,35 @@ const keyNameToMidiNote: { [key: string]: number } = Object.entries(
 
 interface SceneContainerProps {
   assets: LoadedAssets;
-  learningMode: LearnableItem | null;
-  onToggleLearnMenu: () => void;
-  isLearnMenuOpen: boolean;
+  learningMode: SelectableItem | null;
   isYoutubePlaying: boolean;
   toggleYoutubeAudio: () => void;
+  progressionState: {
+    currentChordIndex: number;
+    completed: boolean;
+  };
+  onProgressionAdvance: (playedNotes: number[]) => boolean;
+  onProgressionRestart: () => void;
+  qualityLevel: QualityLevel;
 }
 
-export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLearnMenuOpen, isYoutubePlaying, toggleYoutubeAudio }: SceneContainerProps) {
+export function SceneContainer({ 
+    assets, 
+    learningMode, 
+    isYoutubePlaying,
+    toggleYoutubeAudio,
+    progressionState,
+    onProgressionAdvance,
+    onProgressionRestart,
+    qualityLevel,
+}: SceneContainerProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const { audioCache, isLoaded } = useAudio();
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const clockRef = useRef(new THREE.Clock());
   const activeAnimationsRef = useRef<{ [note: number]: THREE.AnimationAction }>({});
   const pianoModelRef = useRef<THREE.Group>();
-  const sunMaterialRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const keyMaterialsRef = useRef<{ [keyName: string]: THREE.MeshStandardMaterial }>({});
-  const hologramMaterialsRef = useRef<{ [keyName: string]: THREE.ShaderMaterial }>({});
   const onOffButtonMaterialRef = useRef<THREE.MeshStandardMaterial>();
 
   const [midiState, setMidiState] = useState<MidiState>({ status: 'pending', lastMessage: null });
@@ -104,74 +79,16 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
   const [modulation, setModulation] = useState(0); // 0 to 1
   const [masterVolume, setMasterVolume] = useState(1); // 0 to 1
 
-  const [activeNotes, setActiveNotes] = useState<number[]>([]);
+  const activeNotesRef = useRef<number[]>([]);
   const [currentChord, setCurrentChord] = useState<ChordInfo | null>(null);
 
-  const [sunColor, setSunColor] = useState('#ffddaa');
-  const [sunIntensity, setSunIntensity] = useState(1.3);
+  const ssrPassRef = useRef<SSRPass>();
+  const bloomPassRef = useRef<UnrealBloomPass>();
 
-  useEffect(() => {
-    if (activeNotes.length > 0) {
-      const chord = identifyChord(activeNotes);
-      setCurrentChord(chord);
-    } else {
-      setCurrentChord(null);
-    }
-  }, [activeNotes]);
-
-   const revertAllToOriginalMaterial = useCallback(() => {
-    if (!pianoModelRef.current) return;
-    pianoModelRef.current.traverse((child) => {
-        if (child instanceof THREE.Mesh && keyMaterialsRef.current[child.name]) {
-            child.material = keyMaterialsRef.current[child.name];
-        }
-    });
+  const flashCorrectChord = useCallback(() => {
+    setCurrentChord({ name: "Good job!", notes: [] });
+    setTimeout(() => setCurrentChord(null), 1000);
   }, []);
-
-  const applyHologramToNote = useCallback((note: number) => {
-      const keyName = midiNoteToKeyName[note];
-      if (keyName) {
-          const keyObject = pianoModelRef.current?.getObjectByName(keyName) as THREE.Mesh;
-          if (keyObject) {
-              if (!hologramMaterialsRef.current[keyName]) {
-                  const isBlackKey = keyName.includes('_Sharp');
-                  const hologramMaterial = new THREE.ShaderMaterial({
-                      uniforms: {
-                          uTime: { value: 0 },
-                          uColor: { value: new THREE.Color(isBlackKey ? '#FF8C00' : '#00FFFF') }
-                      },
-                      vertexShader,
-                      fragmentShader: hologramFragmentShader,
-                      transparent: true,
-                      blending: THREE.AdditiveBlending,
-                      depthWrite: false,
-                  });
-                  hologramMaterialsRef.current[keyName] = hologramMaterial;
-              }
-              keyObject.material = hologramMaterialsRef.current[keyName];
-          }
-      }
-  }, []);
-
-  useEffect(() => {
-    revertAllToOriginalMaterial();
-    if (learningMode && pianoModelRef.current) {
-        const notesToHighlight = learningMode.notes;
-        notesToHighlight.forEach(note => {
-           applyHologramToNote(note);
-        });
-    }
-}, [learningMode, revertAllToOriginalMaterial, applyHologramToNote]);
-
-  // Handle On/Off button glow based on menu state
-  useEffect(() => {
-    if (onOffButtonMaterialRef.current) {
-        gsap.to(onOffButtonMaterialRef.current, {
-            emissiveIntensity: isLearnMenuOpen ? 5 : 0.5,
-            duration: 0.3
-        });
-    }
-  }, [isLearnMenuOpen]);
 
   const playNoteAudio = useCallback((noteName: string, velocity: number) => {
     if (!isLoaded || !audioCache) return;
@@ -186,18 +103,88 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
       console.warn(`Audio not found in cache for: ${soundPath}`)
     }
   }, [audioCache, isLoaded, masterVolume]);
+  
+  const applyEmissiveToNote = useCallback((note: number, turnOff = false) => {
+    const keyName = midiNoteToKeyName[note];
+    if (keyName) {
+        const keyObject = pianoModelRef.current?.getObjectByName(keyName) as THREE.Mesh;
+        if (keyObject && keyMaterialsRef.current[keyName]) {
+            const material = keyMaterialsRef.current[keyName];
+            keyObject.material = material;
+            gsap.killTweensOf(material);
+            if (turnOff) {
+                gsap.to(material, { emissiveIntensity: 0, duration: 0.3 });
+            } else {
+                material.emissive.set('#87CEEB'); // Light blue for learning
+                gsap.to(material, { emissiveIntensity: 1.5, duration: 0.3 });
+            }
+        }
+    }
+  }, []);
+
+  const getNotesToHighlight = useCallback(() => {
+    if (!learningMode) return [];
+    
+    if ('genre' in learningMode) {
+      const progression = learningMode as LearnableChordProgression;
+      if (!progressionState.completed) {
+        const currentChordName = progression.chords_C[progressionState.currentChordIndex];
+        if (currentChordName) {
+            return getChordNotes(currentChordName);
+        }
+      }
+    } else {
+      return learningMode.notes;
+    }
+    return [];
+  }, [learningMode, progressionState]);
+
+  const handleNoteOff = useCallback((note: number) => {
+    activeNotesRef.current = activeNotesRef.current.filter(n => n !== note);
+    setCurrentChord(identifyChord(activeNotesRef.current));
+
+    const notesToHighlight = getNotesToHighlight();
+    
+    const keyName = midiNoteToKeyName[note];
+    if (!keyName) return;
+
+    const action = activeAnimationsRef.current[note];
+    if (action) {
+        action.paused = false;
+        action.timeScale = -1.5;
+        action.play();
+        delete activeAnimationsRef.current[note];
+    }
+    
+    const material = keyMaterialsRef.current[keyName] as THREE.MeshStandardMaterial;
+    if (material) {
+        gsap.killTweensOf(material);
+        if (notesToHighlight.includes(note)) {
+            material.emissive.set('#87CEEB');
+            gsap.to(material, { 
+                emissiveIntensity: 1.5, 
+                duration: 0.3,
+            });
+        } else {
+            gsap.to(material, { emissiveIntensity: 0, duration: 0.3 });
+        }
+    }
+  }, [getNotesToHighlight]);
 
   const handleNoteOn = useCallback((note: number, velocity: number) => {
-    setActiveNotes(prev => {
-        if (prev.includes(note)) return prev;
-        return [...prev, note].sort((a, b) => a - b)
-    });
+    const activeAndNewNotes = [...new Set([...activeNotesRef.current, note])];
 
-    const keyName = midiNoteToKeyName[note];
-    if (!keyName) {
-      console.log(`No key mapping for MIDI note: ${note}`);
-      return;
+    if (learningMode && 'genre' in learningMode && onProgressionAdvance(activeAndNewNotes)) {
+        flashCorrectChord();
     }
+
+    if (!activeNotesRef.current.includes(note)) {
+        activeNotesRef.current.push(note);
+    }
+    setCurrentChord(identifyChord(activeNotesRef.current));
+    
+    const keyName = midiNoteToKeyName[note];
+    if (!keyName) return;
     
     playNoteAudio(keyName, velocity);
 
@@ -209,7 +196,16 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
         keyObject.material = originalMaterial;
         const isBlackKey = keyName.includes('_Sharp');
         originalMaterial.emissive.set(isBlackKey ? '#FFA500' : '#0504AA');
-        originalMaterial.emissiveIntensity = 8;
+        gsap.to(originalMaterial, { emissiveIntensity: 8, duration: 0.1, onComplete: () => {
+             const notesToHighlight = getNotesToHighlight();
+             if(!notesToHighlight.includes(note)) {
+                 gsap.to(originalMaterial, { emissiveIntensity: 0, duration: 0.3 });
+             } else {
+                 // If it is a learning key, restore its blue glow after flashing
+                 originalMaterial.emissive.set('#87CEEB');
+                 gsap.to(originalMaterial, { emissiveIntensity: 1.5, duration: 0.3 });
+             }
+        }});
     }
 
     if (activeAnimationsRef.current[note]) {
@@ -223,41 +219,28 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
       const action = mixerRef.current.clipAction(clip);
       action.reset();
       action.setLoop(THREE.LoopOnce, 1);
-      action.clampWhenFinished = true;
-      action.timeScale = 1;
+      action.timeScale = 1.5;
       action.play();
       activeAnimationsRef.current[note] = action;
-    } else {
-      console.warn(`Animation or Mixer not found for: ${animationName}`);
     }
-  }, [playNoteAudio, assets.animations]);
+  }, [playNoteAudio, assets.animations, getNotesToHighlight, learningMode, onProgressionAdvance, flashCorrectChord]);
 
-  const handleNoteOff = useCallback((note: number) => {
-    setActiveNotes(prev => prev.filter(n => n !== note));
-
-    const keyName = midiNoteToKeyName[note];
-    if (!keyName) return;
-    
-    const keyObject = pianoModelRef.current?.getObjectByName(keyName) as THREE.Mesh;
-    const material = keyMaterialsRef.current[keyName] as THREE.MeshStandardMaterial;
-
-    if (keyObject && material) {
+   const revertAllKeyMaterials = useCallback(() => {
+    if (!pianoModelRef.current) return;
+    Object.values(keyMaterialsRef.current).forEach(material => {
         gsap.killTweensOf(material);
         material.emissiveIntensity = 0;
+        material.emissive.set(0x000000);
+    });
+  }, []);
 
-        if (learningMode && learningMode.notes.includes(note)) {
-            applyHologramToNote(note);
-        }
-    }
-
-    const action = activeAnimationsRef.current[note];
-    if (action) {
-        action.paused = false;
-        action.timeScale = -1;
-        action.play();
-        delete activeAnimationsRef.current[note];
-    }
-  }, [learningMode, applyHologramToNote]);
+  useEffect(() => {
+    revertAllKeyMaterials();
+    const notesToHighlight = getNotesToHighlight();
+    notesToHighlight.forEach(note => {
+        applyEmissiveToNote(note);
+    });
+}, [learningMode, progressionState, revertAllKeyMaterials, getNotesToHighlight, applyEmissiveToNote]);
 
  const handleMidiMessage = useCallback((message: WebMidi.MIDIMessageEvent) => {
     const [command, data1, data2] = message.data;
@@ -287,12 +270,6 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
     }
   }, [handleNoteOn, handleNoteOff]);
 
-  useEffect(() => {
-    if (sunMaterialRef.current) {
-        sunMaterialRef.current.emissive.set(sunColor);
-        sunMaterialRef.current.emissiveIntensity = sunIntensity;
-    }
-  }, [sunColor, sunIntensity]);
 
  useEffect(() => {
     let midiAccess: WebMidi.MIDIAccess | null = null;
@@ -343,12 +320,50 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
     };
 
     if (navigator.requestMIDIAccess) {
-      navigator.requestMIDIAccess().then(onMIDISuccess, () => onMIDIFailure('Permission denied or MIDI not supported.'));
+      navigator.requestMIDIAccess({ sysex: false }).then(onMIDISuccess, () => onMIDIFailure('Permission denied or MIDI not supported.'));
     } else {
        setMidiState({ status: 'unavailable', lastMessage: null, errorMessage: 'Web MIDI API is not supported in this browser.'});
     }
 }, [handleMidiMessage]);
 
+  useEffect(() => {
+    if (!ssrPassRef.current || !bloomPassRef.current) return;
+
+    const ssrPass = ssrPassRef.current;
+    const bloomPass = bloomPassRef.current;
+    
+    switch(qualityLevel) {
+        case 'Low':
+            bloomPass.enabled = false;
+            ssrPass.enabled = false;
+            break;
+        case 'Medium':
+            bloomPass.enabled = true;
+            bloomPass.strength = 0.1;
+            
+            ssrPass.opacity = 0.02;
+            ssrPass.thickness = 0.1;
+            if (ssrPass.material?.uniforms?.uIor) ssrPass.material.uniforms.uIor.value = 1.45;
+            ssrPass.maxDistance = 10;
+            ssrPass.maxRoughness = 0.1;
+            if (ssrPass.material?.uniforms?.uJitter) ssrPass.material.uniforms.uJitter.value = 0.3;
+            
+            break;
+        case 'High':
+            bloomPass.enabled = true;
+            bloomPass.strength = 0.2;
+
+            ssrPass.opacity = 0.02;
+            ssrPass.thickness = 0.1;
+            if (ssrPass.material?.uniforms?.uIor) ssrPass.material.uniforms.uIor.value = 1.25;
+            ssrPass.maxDistance = 50;
+            ssrPass.maxRoughness = 0.1;
+            if (ssrPass.material?.uniforms?.uJitter) ssrPass.material.uniforms.uJitter.value = 0.5;
+
+            break;
+    }
+
+  }, [qualityLevel]);
 
   useEffect(() => {
     if (!mountRef.current || !assets || !assets.models) return;
@@ -357,8 +372,6 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
     let controls: OrbitControls | null = null;
     let composer: EffectComposer | null = null;
     let animationFrameId: number;
-
-    const dofEffectRef = { current: null as DepthOfFieldEffect | null };
 
     const initScene = async () => {
       const currentMount = mountRef.current!;
@@ -370,12 +383,27 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
       }
       
       const camera = new THREE.PerspectiveCamera(75, currentMount.clientWidth / currentMount.clientHeight, 0.1, 1000);
-      // Set initial camera position for the intro animation
       camera.position.set(0, 2, 8);
 
-
       renderer = new WebGLRenderer({ antialias: false, alpha: true });
-      renderer.setPixelRatio(window.devicePixelRatio);
+      
+      let pixelRatio;
+      switch(qualityLevel) {
+        case 'Low':
+            pixelRatio = 1;
+            break;
+        case 'Medium':
+            pixelRatio = Math.min(window.devicePixelRatio, 1.5);
+            break;
+        case 'High':
+            pixelRatio = Math.min(window.devicePixelRatio, 2);
+            break;
+        default:
+            pixelRatio = Math.min(window.devicePixelRatio, 1.5);
+            break;
+      }
+      renderer.setPixelRatio(pixelRatio);
+
       renderer.setSize(currentMount.clientWidth, currentMount.clientHeight);
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
       renderer.toneMappingExposure = 1;
@@ -387,9 +415,12 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
       controls.minDistance = 2;
       controls.maxDistance = 10;
       controls.maxPolarAngle = Math.PI / 2;
+      controls.minAzimuthAngle = -Math.PI * (4 / 9);
+      controls.maxAzimuthAngle = Math.PI * (4 / 9);
 
-      const directionalLight = new THREE.DirectionalLight(0xE7D06E, 2);
-      directionalLight.position.set(15, 1, 3);
+
+      const directionalLight = new THREE.DirectionalLight(0xE7D06E, 1);
+      directionalLight.position.set(1, 1, 1);
       scene.add(directionalLight);
       
       const ambientLight = new THREE.AmbientLight(0xE7D06E, 0.6);
@@ -422,13 +453,13 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
             }
           });
         }
-        if (key === 'Sun') {
+        if (key === 'Domain') {
           model.traverse((child) => {
-            if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
-              sunMaterialRef.current = child.material;
-              sunMaterialRef.current.emissive.set(sunColor);
-              sunMaterialRef.current.emissiveIntensity = sunIntensity;
-            }
+              if (child instanceof THREE.Mesh && child.material instanceof THREE.MeshStandardMaterial) {
+                  if (child.material.name === 'Curtain' || child.material.name === 'Domain_1') {
+                      child.userData.excludeFromSSR = true;
+                  }
+              }
           });
         }
       });
@@ -444,59 +475,68 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
         camera.lookAt(center);
       }
 
-      // Animate camera to final position
       gsap.to(camera.position, {
-        x: 0,
-        y: 5.1,
-        z: 3,
-        duration: 3,
-        ease: "power2.inOut",
+        x: -0.1,
+        y: 6,
+        z: 2,
+        duration: 4,
         onUpdate: () => {
             controls?.update();
+        },
+        onComplete: () => {
+            if (qualityLevel === 'Low' || !ssrPassRef.current) return;
+            
+            const ssrPass = ssrPassRef.current;
+            const targetOpacity = qualityLevel === 'Medium' ? 0.1 : 0.2;
+            
+            ssrPass.enabled = true;
+            if(ssrPass) {
+                gsap.to(ssrPass, {
+                    opacity: targetOpacity,
+                    duration: 0.2, // 2-second fade-in
+                    ease: 'power1.inOut'
+                });
+            }
         }
       });
 
       composer = new EffectComposer(renderer);
       composer.addPass(new RenderPass(scene, camera));
+
+      const meshesToReflect: THREE.Mesh[] = [];
+        scene.traverse(obj => {
+            if (obj instanceof THREE.Mesh && !obj.userData.excludeFromSSR) {
+                meshesToReflect.push(obj);
+            }
+        });
+
+      const ssrPass = new SSRPass({
+        renderer,
+        scene,
+        camera,
+        width: currentMount.clientWidth,
+        height: currentMount.clientHeight,
+        groundReflector: null,
+        selects: meshesToReflect,
+      });
+       // Start with SSR disabled, it will be faded in after the intro animation.
+      ssrPass.enabled = false;
+      ssrPassRef.current = ssrPass;
       
-      const bloomEffect = new BloomEffect({
-        intensity: 2,
-        luminanceThreshold: 1.3,
-        luminanceSmoothing: 0.25,
-      });
-
-      const dofEffect = new DepthOfFieldEffect(camera, {
-        focusDistance: 0.0,
-        focalLength: 0.048,
-        bokehScale: 3.0,
-        height: 480
-      });
-      dofEffectRef.current = dofEffect;
-
-
-      const smaaEffect = new SMAAEffect({
-          preset: SMAAPreset.MEDIUM
-      });
+      composer.addPass(ssrPass);
       
-      const effects: any[] = [bloomEffect, dofEffect, smaaEffect];
-
-      const effectPass = new EffectPass(camera, ...effects);
-      composer.addPass(effectPass);
-
+      const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 0.2, 0.3, 0.65 );
+      bloomPassRef.current = bloomPass;
+      composer.addPass(bloomPass);
 
       const animate = () => {
         animationFrameId = requestAnimationFrame(animate);
         const delta = clockRef.current.getDelta();
-        const elapsedTime = clockRef.current.getElapsedTime();
 
         if (mixerRef.current) {
           mixerRef.current.update(delta);
         }
 
-        Object.values(hologramMaterialsRef.current).forEach(mat => {
-            mat.uniforms.uTime.value = elapsedTime;
-        });
-        
         controls?.update();
         composer?.render(delta);
       }
@@ -532,7 +572,6 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
               const objectName = intersectedObject.name;
               
               if (objectName === 'On_Off') {
-                onToggleLearnMenu();
                 return;
               }
 
@@ -555,7 +594,9 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
         }
         cancelAnimationFrame(animationFrameId);
         controls?.dispose();
-        composer?.dispose();
+        if (composer) {
+            composer.passes.forEach(pass => pass.dispose?.());
+        }
         renderer?.dispose();
         if (currentMount && renderer?.domElement) {
           try {
@@ -570,7 +611,7 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
     return () => {
       cleanupPromise.then(cleanup => cleanup && cleanup());
     };
-  }, [assets, handleMidiMessage, handleNoteOn, handleNoteOff, onToggleLearnMenu]);
+  }, [assets, handleMidiMessage, handleNoteOn, handleNoteOff, qualityLevel]);
 
   return (
     <div className="absolute inset-0 w-full h-full">
@@ -586,11 +627,16 @@ export function SceneContainer({ assets, learningMode, onToggleLearnMenu, isLear
           onNoteOn={handleNoteOn}
           onNoteOff={handleNoteOff}
         />
-       {learningMode && <LearningDisplay item={learningMode} />}
+       <LearningDisplay 
+          item={learningMode} 
+          progressionState={progressionState}
+          onProgressionRestart={onProgressionRestart}
+        />
        <ChordDisplay chordInfo={currentChord} />
       <div ref={mountRef} className="w-full h-full" />
     </div>
   );
 }
+    
 
     

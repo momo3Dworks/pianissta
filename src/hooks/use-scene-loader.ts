@@ -14,9 +14,6 @@ const ASSETS_TO_LOAD = {
     models: {
         PIANO: '/models/PIANO.glb',
         Domain: '/models/Domain.glb',
-        BackLight: '/models/BackLight.glb',
-        stand: '/models/stand.glb',
-        Sun: '/models/Sun.glb',
     },
     envMap: '/assets/piano_hdr_1_2k.hdr',
     fonts: {}
@@ -58,7 +55,7 @@ export const useSceneLoader = ({ skip = false } = {}) => {
 
         const loadAll = async () => {
             const loadedModels: { [key: string]: GLTF } = {};
-            const loadedFonts: { [key: string]: Font } = {};
+            const loadedFonts: { [key_in_user_code]: Font } = {};
             const animations: THREE.AnimationClip[] = [];
 
             // Load Models
