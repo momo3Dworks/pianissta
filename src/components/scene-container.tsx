@@ -251,7 +251,7 @@ export function SceneContainer({
       }
 
       gsap.to(camera.position, {
-        x: -0.1,
+        x: 0.0,
         y: 6,
         z: 2,
         duration: 4,
