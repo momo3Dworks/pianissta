@@ -34,8 +34,7 @@ export function LearningToolbar({ onSelectItem, selectedItem }: LearningToolbarP
                 <Button 
                     variant="outline" 
                     size="icon" 
-                    className="h-12 w-12 rounded-none border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100 backdrop-blur-md"
-                    style={{ clipPath: 'polygon(20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%, 0 20%)' }}
+                    className="h-12 w-12 rounded-lg border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100 backdrop-blur-md"
                     onClick={() => handleOpenChange('chords', !openMenu)}>
                     <Music />
                 </Button>
@@ -57,8 +56,7 @@ export function LearningToolbar({ onSelectItem, selectedItem }: LearningToolbarP
                 <Button 
                     variant="outline" 
                     size="icon" 
-                    className="h-12 w-12 rounded-none border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100 backdrop-blur-md"
-                    style={{ clipPath: 'polygon(20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%, 0 20%)' }}
+                    className="h-12 w-12 rounded-lg border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100 backdrop-blur-md"
                     onClick={() => handleOpenChange('progressions', !openMenu)}>
                     <Workflow />
                 </Button>
@@ -80,8 +78,7 @@ export function LearningToolbar({ onSelectItem, selectedItem }: LearningToolbarP
                 <Button 
                     variant="outline" 
                     size="icon" 
-                    className="h-12 w-12 rounded-none border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100 backdrop-blur-md"
-                    style={{ clipPath: 'polygon(20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%, 0 20%)' }}
+                    className="h-12 w-12 rounded-lg border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100 backdrop-blur-md"
                     onClick={() => handleOpenChange('modes', !openMenu)}>
                     <BarChart3 />
                 </Button>

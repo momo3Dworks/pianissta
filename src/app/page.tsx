@@ -3,25 +3,21 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import YouTube from 'react-youtube';
-import { ClientScene } from '@/components/client-scene';
-import { InteractionModal } from '@/components/interaction-modal';
 import { AudioProvider, useAudio } from '@/contexts/audio-provider';
-import { LearningToolbar } from '@/components/LearningToolbar';
-import { type LearnableItem, type LearnableChordProgression, getChordNotes, identifyChord, midiNoteToName } from '@/lib/music-theory';
+import { identifyChord, midiNoteToName } from '@/lib/music-theory';
 import Image from 'next/image';
-import { SettingsMenu, type QualityLevel } from '@/components/SettingsMenu';
+import { QualityLevel } from '@/components/SettingsMenu';
 import { useSceneLoader, type LoadedAssets } from '@/hooks/use-scene-loader';
-import { MidiStatus, type MidiState, type MidiMessage } from '@/components/MidiStatus';
+import { MidiState } from '@/components/MidiStatus';
 import { ChordInfo } from '@/components/ChordDisplay';
 import { gsap } from 'gsap';
 import * as THREE from 'three';
+import { Midi } from '@tonejs/midi';
+import { useLearningMode } from '@/hooks/use-learning-mode';
+import { ClientScene } from '@/components/client-scene';
+import { SceneUI } from '@/components/scene-ui';
+import { InteractionModal } from '@/components/interaction-modal';
 
-type SelectableItem = LearnableItem | LearnableChordProgression;
-
-interface ProgressionState {
-    currentChordIndex: number;
-    completed: boolean;
-}
 
 const midiNoteToKeyName: { [key: number]: string } = {
   // White keys
@@ -40,8 +36,6 @@ const midiNoteToKeyName: { [key: number]: string } = {
 
 function MainContent() {
   const [hasInteracted, setHasInteracted] = useState(false);
-  const [learningMode, setLearningMode] = useState<SelectableItem | null>(null);
-  const [progressionState, setProgressionState] = useState<ProgressionState>({ currentChordIndex: 0, completed: false });
   const [isYoutubePlaying, setIsYoutubePlaying] = useState(true);
   const [qualityLevel, setQualityLevel] = useState<QualityLevel>('Medium');
   const playerRef = useRef<any>(null);
@@ -52,13 +46,38 @@ function MainContent() {
   const isFullyLoaded = isAudioLoaded && areAssetsLoaded;
 
   const [midiState, setMidiState] = useState<MidiState>({ status: 'pending', lastMessage: null });
-  const [activeNotes, setActiveNotes] = useState<number[]>([]);
   const [currentChord, setCurrentChord] = useState<ChordInfo | null>(null);
 
   const keyMaterialsRef = useRef<{ [keyName: string]: THREE.MeshStandardMaterial }>({});
   const mixerRef = useRef<THREE.AnimationMixer | null>(null);
   const activeAnimationsRef = useRef<{ [note: number]: THREE.AnimationAction }>({});
   const masterVolume = 1;
+
+  const [currentMidi, setCurrentMidi] = useState<Midi | null>(null);
+  
+  const {
+      currentItem: learningMode,
+      notesToHighlight,
+      progressionState,
+      isCorrectChord,
+      selectItem,
+      handleNoteOn: learningHandleNoteOn,
+      handleNoteOff: learningHandleNoteOff,
+      restartProgression,
+      activeNotes
+  } = useLearningMode();
+
+    useEffect(() => {
+        if (isCorrectChord) {
+            setCurrentChord({ name: "Good job!", notes: [] });
+            const timer = setTimeout(() => {
+                setCurrentChord(identifyChord(activeNotes));
+            }, 1000);
+            return () => clearTimeout(timer);
+        } else {
+             setCurrentChord(identifyChord(activeNotes));
+        }
+    }, [isCorrectChord, activeNotes]);
 
 
   let loadingStep = '';
@@ -79,28 +98,6 @@ function MainContent() {
     }
   };
 
-  const handleSelectItem = (item: SelectableItem | null) => {
-    setLearningMode(item);
-    setProgressionState({ currentChordIndex: 0, completed: false });
-  }
-
-  const getNotesToHighlight = useCallback(() => {
-    if (!learningMode) return [];
-    
-    if ('genre' in learningMode) {
-      const progression = learningMode as LearnableChordProgression;
-      if (!progressionState.completed) {
-        const currentChordName = progression.chords_C[progressionState.currentChordIndex];
-        if (currentChordName) {
-            return getChordNotes(currentChordName);
-        }
-      }
-    } else {
-      return learningMode.notes;
-    }
-    return [];
-  }, [learningMode, progressionState]);
-
   const updateKeyVisuals = useCallback((note: number, isPressed: boolean, velocity: number = 100) => {
     const keyName = midiNoteToKeyName[note];
     if (!keyName || !assets.animations) return;
@@ -115,12 +112,9 @@ function MainContent() {
             material.emissive.set(isBlackKey ? '#FFA500' : '#0504AA');
             gsap.to(material, { emissiveIntensity: intensity, duration: 0.1 });
         } else {
-            const notesToHighlight = getNotesToHighlight();
-            if (notesToHighlight.includes(note)) {
-                material.emissive.set('#87CEEB'); // Learning color
-                gsap.to(material, { emissiveIntensity: 1.5, duration: 0.3 });
-            } else {
-                gsap.to(material, { emissiveIntensity: 0, duration: 0.3 });
+            // Highlighting for learning mode is handled in a separate useEffect
+            if (!notesToHighlight.includes(note)) {
+                 gsap.to(material, { emissiveIntensity: 0, duration: 0.3 });
             }
         }
     }
@@ -151,7 +145,7 @@ function MainContent() {
             }
         }
     }
-  }, [assets.animations, getNotesToHighlight, mixerRef, activeAnimationsRef, keyMaterialsRef]);
+  }, [assets.animations, notesToHighlight]);
 
   const playNoteAudio = useCallback((noteName: string, velocity: number) => {
     if (!isAudioLoaded || !audioCache || !noteName) return;
@@ -167,66 +161,16 @@ function MainContent() {
     }
   }, [audioCache, isAudioLoaded, masterVolume]);
 
-
-  const onProgressionAdvance = useCallback((playedNotes: number[]) => {
-    if (!learningMode || !('genre' in learningMode) || progressionState.completed) {
-        return false;
-    }
-
-    const progression = learningMode as LearnableChordProgression;
-    const currentChordName = progression.chords_C[progressionState.currentChordIndex];
-    if (!currentChordName) return false;
-
-    const currentChordNotes = getChordNotes(currentChordName).map(n => n % 12).sort();
-    const playedNoteClasses = [...new Set(playedNotes.map(n => n % 12))].sort();
-
-    const isCorrect = currentChordNotes.length > 0 && 
-                      currentChordNotes.length === playedNoteClasses.length && 
-                      currentChordNotes.every((note, index) => note === playedNoteClasses[index]);
-
-    if (isCorrect) {
-        if (progressionState.currentChordIndex < progression.chords_C.length - 1) {
-            setProgressionState(prev => ({ ...prev, currentChordIndex: prev.currentChordIndex + 1 }));
-        } else {
-            setProgressionState(prev => ({ ...prev, completed: true }));
-        }
-        return true;
-    }
-    return false;
-  }, [learningMode, progressionState]);
-
-
-  const restartProgression = useCallback(() => {
-    setProgressionState({ currentChordIndex: 0, completed: false });
-  }, []);
-
   const handleNoteOn = useCallback((note: number, velocity = 100) => {
-    setActiveNotes(prev => {
-        if (prev.includes(note)) return prev;
-        const newNotes = [...prev, note];
-        setCurrentChord(identifyChord(newNotes));
-        return newNotes;
-    });
-  }, []);
+     learningHandleNoteOn(note);
+     playNoteAudio(midiNoteToKeyName[note], velocity);
+     updateKeyVisuals(note, true, velocity);
+  }, [learningHandleNoteOn, playNoteAudio, updateKeyVisuals]);
 
   const handleNoteOff = useCallback((note: number) => {
-    setActiveNotes(prev => {
-        const notesPlayed = [...prev];
-        const newNotes = prev.filter(n => n !== note);
-
-        if (newNotes.length === 0 && notesPlayed.length > 0) {
-            // Only advance progression when all keys are released
-            if (learningMode && onProgressionAdvance(notesPlayed)) {
-                 setCurrentChord({ name: "Good job!", notes: [] });
-                 setTimeout(() => setCurrentChord(identifyChord(newNotes)), 1000);
-            }
-        }
-        
-        setCurrentChord(identifyChord(newNotes));
-        return newNotes;
-    });
-  }, [onProgressionAdvance, learningMode]);
-
+    learningHandleNoteOff(note);
+    updateKeyVisuals(note, false);
+  }, [learningHandleNoteOff, updateKeyVisuals]);
 
   const handleMidiMessage = useCallback((message: WebMidi.MIDIMessageEvent) => {
     const [command, data1, data2] = message.data;
@@ -240,20 +184,15 @@ function MainContent() {
         case 0x90: // Note On
             if (data2 > 0) {
               handleNoteOn(data1, data2);
-              playNoteAudio(midiNoteToKeyName[data1], data2);
-              updateKeyVisuals(data1, true, data2);
             } else { // Note Off message sent as Note On with velocity 0
               handleNoteOff(data1);
-              updateKeyVisuals(data1, false);
             }
             break;
         case 0x80: // Note Off
             handleNoteOff(data1);
-            updateKeyVisuals(data1, false);
             break;
     }
-  }, [handleNoteOn, handleNoteOff, playNoteAudio, updateKeyVisuals]);
-
+  }, [handleNoteOn, handleNoteOff]);
 
   useEffect(() => {
     let midiAccess: WebMidi.MIDIAccess | null = null;
@@ -312,14 +251,31 @@ function MainContent() {
 
 
   useEffect(() => {
-    if (learningMode && 'genre' in learningMode) {
-      setProgressionState({ currentChordIndex: 0, completed: false });
-    }
-  }, [learningMode]);
+    // This effect handles the visual state for learning mode highlights.
+    Object.entries(midiNoteToKeyName).forEach(([noteStr, keyName]) => {
+        const note = parseInt(noteStr, 10);
+        const material = keyMaterialsRef.current[keyName] as THREE.MeshStandardMaterial;
+
+        if (material) {
+            // Don't change visuals for actively played notes
+            if (activeNotes.includes(note)) return;
+
+            gsap.killTweensOf(material);
+            if (notesToHighlight.includes(note)) {
+                // Apply learning highlight
+                material.emissive.set('#87CEEB');
+                gsap.to(material, { emissiveIntensity: 1.5, duration: 0.3 });
+            } else {
+                // Turn off emissive
+                gsap.to(material, { emissiveIntensity: 0, duration: 0.3 });
+            }
+        }
+    });
+}, [notesToHighlight, activeNotes]);
 
   const onPlayerReady = (event: any) => {
     playerRef.current = event.target;
-    playerRef.current.setVolume(1.5);
+    playerRef.current.setVolume(1.3);
     if (hasInteracted) {
         playerRef.current.playVideo();
         setIsYoutubePlaying(true);
@@ -337,10 +293,6 @@ function MainContent() {
     setIsYoutubePlaying(prev => !prev);
   }, [isYoutubePlaying]);
 
-  const handleQualityChange = useCallback((level: QualityLevel) => {
-    setQualityLevel(level);
-  }, []);
-
   const onSceneInit = useCallback((initArgs: {
       keyMaterials: typeof keyMaterialsRef.current;
       mixer: typeof mixerRef.current;
@@ -351,13 +303,10 @@ function MainContent() {
 
   const onKeyClick = useCallback((note: number) => {
     handleNoteOn(note);
-    playNoteAudio(midiNoteToKeyName[note], 100);
-    updateKeyVisuals(note, true, 100);
     setTimeout(() => {
       handleNoteOff(note);
-      updateKeyVisuals(note, false);
     }, 150);
-  }, [handleNoteOn, playNoteAudio, updateKeyVisuals, handleNoteOff]);
+  }, [handleNoteOn, handleNoteOff]);
 
 
   return (
@@ -371,47 +320,28 @@ function MainContent() {
         />
       ) : (
           <>
-            <div
-              className="fixed top-4 z-20 flex items-center gap-4 opacity-0 animate-slide-in-down"
-              style={{
-                animationDelay: '0.2s',
-                left: '35%',
-                transform: 'translateX(-50%)',
-              }}
-            >
-                <div className="hidden min-[790px]:flex">
-                    <MidiStatus state={midiState} isYoutubePlaying={isYoutubePlaying} toggleYoutubeAudio={toggleYoutubeAudio} />
-                </div>
-                <LearningToolbar
-                    onSelectItem={handleSelectItem}
-                    selectedItem={learningMode}
-                />
-            </div>
-
-
-            <div 
-              className="absolute top-4 right-4 z-20 opacity-0 animate-slide-in-down"
-              style={{ animationDelay: '0.4s' }}
-            >
-              <SettingsMenu
-                  qualityLevel={qualityLevel}
-                  onQualityChange={handleQualityChange}
-              />
-            </div>
-
-
-            <ClientScene 
-              assets={assets as LoadedAssets}
-              learningMode={learningMode}
-              progressionState={progressionState}
-              onProgressionRestart={restartProgression}
-              qualityLevel={qualityLevel}
-              onSceneInit={onSceneInit}
-              onKeyClick={onKeyClick}
-              getNotesToHighlight={getNotesToHighlight}
-              updateKeyVisuals={updateKeyVisuals}
-              currentChord={currentChord}
-              />
+            <ClientScene
+                assets={assets as LoadedAssets}
+                qualityLevel={qualityLevel}
+                onSceneInit={onSceneInit}
+                onKeyClick={onKeyClick}
+            />
+            <SceneUI
+                learningMode={learningMode}
+                progressionState={progressionState}
+                onProgressionRestart={restartProgression}
+                currentChord={currentChord}
+                currentMidi={currentMidi}
+                onMidiLoaded={setCurrentMidi}
+                onMidiNoteOn={handleNoteOn}
+                onMidiNoteOff={handleNoteOff}
+                qualityLevel={qualityLevel}
+                onQualityChange={setQualityLevel}
+                onSelectItem={selectItem}
+                midiState={midiState}
+                isYoutubePlaying={isYoutubePlaying}
+                toggleYoutubeAudio={toggleYoutubeAudio}
+            />
         </>
       )}
        <div className="absolute -z-10 opacity-0">
@@ -450,9 +380,5 @@ export default function Home() {
         </AudioProvider>
     )
 }
-
-    
-
-    
 
     

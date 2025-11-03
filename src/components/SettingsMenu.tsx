@@ -36,15 +36,13 @@ export function SettingsMenu({ qualityLevel, onQualityChange }: SettingsMenuProp
           <Button 
             variant="outline" 
             size="icon" 
-            className="h-12 w-12 rounded-none backdrop-blur-md  border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100 backdrop-blur-md"
-            style={{ clipPath: 'polygon(20% 0, 100% 0, 100% 80%, 80% 100%, 0 100%, 0 20%)' }}
+            className="h-12 w-12 rounded-lg backdrop-blur-md  border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100 backdrop-blur-md"
           >
             <Settings />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent 
-            className="w-64 bg-purple-950/80 border-orange-500/30 text-orange-100 backdrop-blur-md rounded-none"
-            style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%)' }}
+            className="w-64 bg-purple-950/80 border-orange-500/30 text-orange-100 backdrop-blur-md rounded-lg"
         >
           <DropdownMenuLabel>Quality Settings</DropdownMenuLabel>
           <DropdownMenuSeparator className="bg-orange-500/20" />

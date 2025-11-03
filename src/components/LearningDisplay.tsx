@@ -40,10 +40,9 @@ export function LearningDisplay({ item, progressionState, onProgressionRestart }
 
 
   return (
-    <div className="absolute top-28 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4 w-full max-w-md">
+    <div className="absolute top-28 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-4 w-full max-w-lg">
       <div 
-        className="flex flex-col items-center gap-3 rounded-lg border border-orange-500/30 bg-gradient-to-br from-purple-900/50 to-purple-800/50 p-4 shadow-lg shadow-purple-900/20 backdrop-blur-md"
-        style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%)' }}
+        className="flex flex-col items-center gap-4 rounded-lg border border-orange-500/30 bg-gradient-to-br from-purple-900/50 to-purple-800/50 p-6 shadow-lg shadow-purple-900/20 backdrop-blur-md"
       >
         <div className="text-center">
             <p className="text-sm font-medium text-orange-300">Currently Learning:</p>
@@ -62,7 +61,7 @@ export function LearningDisplay({ item, progressionState, onProgressionRestart }
                 </div>
             )}
         </div>
-        <PianoIcon notesToHighlight={notesToHighlight} className="w-[200px]" />
+        <PianoIcon notesToHighlight={notesToHighlight} className="w-[290px]" />
         {isProgression && progressionState?.completed && onProgressionRestart && (
              <Button onClick={onProgressionRestart} size="sm" variant="outline" className="mt-2 bg-purple-800/70 border-orange-500/40 hover:bg-purple-700/80">
                 <RefreshCcw className="mr-2 h-4 w-4" />

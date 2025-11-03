@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { WebGLRenderer } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -11,14 +11,7 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { SSRPass } from '../lib/Custom_SSRPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { gsap } from 'gsap';
-import { ChordDisplay, type ChordInfo } from './ChordDisplay';
-import { type LearnableItem, type LearnableChordProgression } from '@/lib/music-theory';
-import { LearningDisplay } from './LearningDisplay';
-import { MidiLibrary } from './MidiLibrary';
 import { QualityLevel } from './SettingsMenu';
-import { MidiState, MidiStatus } from './MidiStatus';
-
-type SelectableItem = LearnableItem | LearnableChordProgression;
 
 const midiNoteToKeyName: { [key: number]: string } = {
   // White keys
@@ -41,64 +34,24 @@ const keyNameToMidiNote: { [key: string]: number } = Object.entries(
 
 interface SceneContainerProps {
   assets: LoadedAssets;
-  learningMode: SelectableItem | null;
-  progressionState: {
-    currentChordIndex: number;
-    completed: boolean;
-  };
-  onProgressionRestart: () => void;
   qualityLevel: QualityLevel;
-  currentChord: ChordInfo | null;
   onSceneInit: (args: {
     keyMaterials: Record<string, THREE.MeshStandardMaterial>;
     mixer: THREE.AnimationMixer | null;
   }) => void;
   onKeyClick: (note: number) => void;
-  getNotesToHighlight: () => number[];
-  updateKeyVisuals: (note: number, isPressed: boolean, velocity?: number) => void;
 }
 
 export function SceneContainer({
   assets,
-  learningMode,
-  progressionState,
-  onProgressionRestart,
   qualityLevel,
-  currentChord,
   onSceneInit,
   onKeyClick,
-  getNotesToHighlight,
-  updateKeyVisuals
 }: SceneContainerProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const pianoModelRef = useRef<THREE.Group>();
-
   const ssrPassRef = useRef<SSRPass>();
   const bloomPassRef = useRef<UnrealBloomPass>();
-
-  useEffect(() => {
-    // This effect is to reset all keys when the learning mode changes
-    if (!pianoModelRef.current) return;
-
-    const keyMaterials = (pianoModelRef.current.userData.keyMaterials as Record<string, THREE.MeshStandardMaterial>) || {};
-
-    Object.values(keyMaterials).forEach(material => {
-      gsap.killTweensOf(material);
-      material.emissiveIntensity = 0;
-      material.emissive.set(0x000000);
-    });
-
-    const notesToHighlight = getNotesToHighlight();
-    notesToHighlight.forEach(note => {
-      const keyName = midiNoteToKeyName[note];
-      if (keyName && keyMaterials[keyName]) {
-        const material = keyMaterials[keyName];
-        material.emissive.set('#87CEEB'); // Learning color
-        gsap.to(material, { emissiveIntensity: 1.5, duration: 0.3 });
-      }
-    });
-  }, [learningMode, progressionState, getNotesToHighlight]);
-
 
   useEffect(() => {
     if (!ssrPassRef.current || !bloomPassRef.current) return;
@@ -223,7 +176,6 @@ export function SceneContainer({
               }
             }
           });
-          // Store materials on the model's user data for later access
           model.userData.keyMaterials = keyMaterials;
         }
         if (key === 'Domain') {
@@ -294,7 +246,6 @@ export function SceneContainer({
         groundReflector: null,
         selects: meshesToReflect,
       });
-      // Start with SSR disabled, it will be faded in after the intro animation.
       ssrPass.enabled = false;
       ssrPassRef.current = ssrPass;
 
@@ -385,24 +336,11 @@ export function SceneContainer({
     return () => {
       cleanupPromise.then(cleanup => cleanup && cleanup());
     };
-  }, [assets, qualityLevel, onSceneInit, onKeyClick]); // Keep minimal dependencies to avoid re-initializing the scene
+  }, [assets, onSceneInit, onKeyClick]); // Only re-run when these essential, stable props change.
 
   return (
     <div className="absolute inset-0 w-full h-full">
-      <MidiLibrary
-        onNoteOn={() => { }}
-        onNoteOff={() => { }}
-      />
-      <LearningDisplay
-        item={learningMode}
-        progressionState={progressionState}
-        onProgressionRestart={onProgressionRestart}
-      />
-      <ChordDisplay chordInfo={currentChord} />
       <div ref={mountRef} className="w-full h-full" />
     </div>
   );
 }
-
-
-

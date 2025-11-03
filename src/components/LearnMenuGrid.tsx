@@ -37,8 +37,7 @@ export function LearnMenuGrid({ items, onItemSelect, onBack, isNoteGrid = false 
               key={item}
               variant="outline"
               onClick={() => onItemSelect(item)}
-              className="h-20 text-sm md:text-base font-semibold bg-purple-800/30 border-orange-500/30 hover:bg-purple-700/50 rounded-none"
-              style={{ clipPath: 'polygon(15% 0, 100% 0, 100% 85%, 85% 100%, 0 100%, 0 15%)' }}
+              className="h-20 text-sm md:text-base font-semibold bg-purple-800/30 border-orange-500/30 hover:bg-purple-700/50 rounded-lg"
             >
               {item}
             </Button>

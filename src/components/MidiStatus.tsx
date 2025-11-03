@@ -70,8 +70,7 @@ export function MidiStatus({ state, isYoutubePlaying, toggleYoutubeAudio }: Midi
             className="h-12 flex items-center z-10"
         >
             <div 
-                className="bg-gradient-to-br from-purple-900/70 to-black/70 backdrop-blur-md p-3 h-full flex items-center gap-4"
-                style={{ clipPath: 'polygon(10px 0, 100% 0, 100% 100%, 0 100%, 0 10px)' }}
+                className="bg-gradient-to-br from-purple-900/70 to-black/70 backdrop-blur-md p-3 h-full flex items-center gap-4 rounded-lg"
             >
                 <div className="flex items-center gap-2">
                     <span className={cn("h-2 w-2 rounded-full", color)}></span>
@@ -100,8 +99,7 @@ export function MidiStatus({ state, isYoutubePlaying, toggleYoutubeAudio }: Midi
                     variant="ghost" 
                     size="icon"
                     onClick={toggleYoutubeAudio}
-                    className="h-8 w-8 rounded-none bg-black/20 hover:bg-black/40 text-orange-300 hover:text-orange-100 ml-auto"
-                    style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%)' }}
+                    className="h-8 w-8 rounded-lg bg-black/20 hover:bg-black/40 text-orange-300 hover:text-orange-100 ml-auto"
                 >
                     <AudioLines className={cn(isYoutubePlaying && "soundwave-icon", "transition-opacity h-5 w-5", !isYoutubePlaying && "opacity-50")} />
                 </Button>

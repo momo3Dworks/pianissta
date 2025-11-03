@@ -45,8 +45,7 @@ export function InteractionModal({ onInteract, isLoading, loadingStep, progress 
   return (
     <AlertDialog open={true}>
       <AlertDialogContent 
-        className="w-full max-w-lg rounded-none bg-gradient-to-br from-black to-blue-950 p-6 text-orange-100 drop-shadow-lg"
-        style={{ clipPath: 'polygon(10% 0, 100% 0, 100% 90%, 90% 100%, 0 100%, 0 10%)' }}
+        className="w-full max-w-lg rounded-lg bg-gradient-to-br from-black to-blue-950 p-6 text-orange-100 drop-shadow-lg"
       >
         <AlertDialogHeader>
           <AlertDialogTitle className="text-orange-100 text-center">Learn Piano with me!</AlertDialogTitle>

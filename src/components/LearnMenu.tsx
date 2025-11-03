@@ -125,7 +125,7 @@ export function LearnMenu({ isOpen, onOpenChange, onSelectItem, selectedItem, ti
     <Sheet open={isOpen} onOpenChange={handleOpenChangeWithReset}>
       <SheetContent 
         side="top" 
-        className="h-auto bg-purple-950/40 border-b border-orange-500/20 text-orange-100 backdrop-blur-md rounded-none max-w-4xl w-full mx-auto overflow-hidden"
+        className="h-auto bg-purple-950/40 border-b border-orange-500/20 text-orange-100 backdrop-blur-md rounded-b-lg max-w-4xl w-full mx-auto overflow-hidden"
       >
         <div className="relative h-full flex flex-col">
             <div 
