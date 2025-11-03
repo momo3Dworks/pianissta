@@ -11,8 +11,8 @@ interface MidiPlayerProps {
   currentTime: number;
 }
 
-const MIN_NOTE = 21; // A0
-const MAX_NOTE = 108; // C8
+const MIN_NOTE = 48; // C3
+const MAX_NOTE = 96; // C7
 const WHITE_KEY_WIDTH = 20;
 const BLACK_KEY_WIDTH = 12;
 const KEYBOARD_HEIGHT = 100;
@@ -72,9 +72,9 @@ export function MidiPlayer({ midi, currentTime }: MidiPlayerProps) {
   return (
     <div 
       className={cn(
-        "fixed z-20 h-64 bg-black/50 backdrop-blur-sm border border-orange-500/20 rounded-lg max-w-[1350px] transition-all duration-500 ease-in-out",
-        "bottom-4 left-4 right-4",
-        isCollapsed ? "translate-x-[-100%] left-[-1rem] right-[100%]" : "translate-x-0 mx-auto"
+        "fixed z-20 h-64 bg-black/50 backdrop-blur-md border border-orange-500/20 rounded-lg w-full max-w-[1010px] transition-all duration-500 ease-in-out",
+        "bottom-4",
+        isCollapsed ? "translate-x-[-100%] left-[-1rem] right-[100%]" : "left-1/2 -translate-x-1/2"
       )}
     >
       <Button 
@@ -82,7 +82,7 @@ export function MidiPlayer({ midi, currentTime }: MidiPlayerProps) {
         size="icon" 
         onClick={() => setIsCollapsed(!isCollapsed)}
         className={cn(
-            "absolute top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-orange-200 transition-all duration-500 ease-in-out",
+            "absolute top-1/2 -translate-y-1/2 z-30 bg-black/30 hover:bg-black/60 text-orange-200 transition-all duration-500 ease-in-out backdrop-blur-md",
             isCollapsed ? "left-[100%] ml-4 rounded-l-md" : "left-0 rounded-r-none"
         )}
       >

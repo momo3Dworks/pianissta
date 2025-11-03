@@ -68,7 +68,7 @@ export function SceneContainer({
         bloomPass.enabled = true;
         bloomPass.strength = 0.1;
         ssrPass.blur = true;
-        ssrPass.opacity = 0.2;
+        ssrPass.opacity = 0.1;
         ssrPass.thickness = 0.8;
         if (ssrPass.material?.uniforms?.uIor) ssrPass.material.uniforms.uIor.value = 1.45;
         ssrPass.maxDistance = 8;
@@ -80,7 +80,7 @@ export function SceneContainer({
         bloomPass.enabled = true;
         bloomPass.strength = 0.2;
 
-        ssrPass.opacity = 0.3;
+        ssrPass.opacity = 0.2;
         ssrPass.thickness = 1.5;
         if (ssrPass.material?.uniforms?.uIor) ssrPass.material.uniforms.uIor.value = 1.25;
         ssrPass.maxDistance = 35;
@@ -220,7 +220,7 @@ export function SceneContainer({
           if (ssrPass) {
             gsap.to(ssrPass, {
               opacity: targetOpacity,
-              duration: 0.2, // 2-second fade-in
+              duration: 0.01, // 2-second fade-in
               ease: 'power1.inOut'
             });
           }

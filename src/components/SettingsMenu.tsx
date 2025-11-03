@@ -36,7 +36,7 @@ export function SettingsMenu({ qualityLevel, onQualityChange }: SettingsMenuProp
           <Button 
             variant="outline" 
             size="icon" 
-            className="h-12 w-12 rounded-lg backdrop-blur-md  border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100 backdrop-blur-md"
+            className="h-12 w-12 rounded-lg backdrop-blur-md  border-orange-500/30 bg-purple-900/50 hover:bg-purple-800/70 text-orange-200 hover:text-orange-100"
           >
             <Settings />
           </Button>

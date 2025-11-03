@@ -275,7 +275,7 @@ function MainContent() {
 
   const onPlayerReady = (event: any) => {
     playerRef.current = event.target;
-    playerRef.current.setVolume(1.3);
+    playerRef.current.setVolume(2.3);
     if (hasInteracted) {
         playerRef.current.playVideo();
         setIsYoutubePlaying(true);
@@ -346,14 +346,14 @@ function MainContent() {
       )}
        <div className="absolute -z-10 opacity-0">
          <YouTube
-            videoId="vPhg6sc1Mk4"
+            videoId="dqtdKvyS80c"
             opts={{
                 height: '0',
                 width: '0',
                 playerVars: {
                     autoplay: 0,
                     loop: 1,
-                    playlist: 'vPhg6sc1Mk4',
+                    playlist: 'dqtdKvyS80c',
                     origin: typeof window !== 'undefined' ? window.location.origin : undefined,
                 },
             }}

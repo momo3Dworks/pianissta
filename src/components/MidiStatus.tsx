@@ -99,7 +99,7 @@ export function MidiStatus({ state, isYoutubePlaying, toggleYoutubeAudio }: Midi
                     variant="ghost" 
                     size="icon"
                     onClick={toggleYoutubeAudio}
-                    className="h-8 w-8 rounded-lg bg-black/20 hover:bg-black/40 text-orange-300 hover:text-orange-100 ml-auto"
+                    className="h-8 w-8 rounded-lg bg-black/20 hover:bg-black/40 text-orange-300 hover:text-orange-100 ml-auto backdrop-blur-md"
                 >
                     <AudioLines className={cn(isYoutubePlaying && "soundwave-icon", "transition-opacity h-5 w-5", !isYoutubePlaying && "opacity-50")} />
                 </Button>
