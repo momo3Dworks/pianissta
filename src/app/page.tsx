@@ -319,7 +319,7 @@ function MainContent() {
 
   const onPlayerReady = (event: any) => {
     playerRef.current = event.target;
-    playerRef.current.setVolume(4);
+    playerRef.current.setVolume(1.5);
     if (hasInteracted) {
         playerRef.current.playVideo();
         setIsYoutubePlaying(true);
